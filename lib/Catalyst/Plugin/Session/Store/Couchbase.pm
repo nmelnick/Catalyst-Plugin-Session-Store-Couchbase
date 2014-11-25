@@ -69,6 +69,8 @@ SSL is disabled.
 
 Timeout (in seconds) to allow for bootstrapping a client. Defaults to 6.
 
+=back
+
 =cut
 
 sub setup_session {
