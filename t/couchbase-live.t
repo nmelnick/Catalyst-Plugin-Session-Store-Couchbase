@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 
-done_testing();
+use_ok('Catalyst::Plugin::Session::Store::Couchbase');
 
 BEGIN {	
 	if ( my $server = $ENV{COUCHBASE_TEST_SERVER} ) {
