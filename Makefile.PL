@@ -2,7 +2,7 @@ use inc::Module::Install;
 
 name     'Catalyst-Plugin-Session-Store-Couchbase';
 all_from 'lib/Catalyst/Plugin/Session/Store/Couchbase.pm';
-author   q{Toby Corkindale <tjc@wintrmute.net>};
+author   q{Nick Melnick <nick@abstractwankery.com>}, q{Toby Corkindale <tjc@wintrmute.net>};
 license  'perl';
 
 build_requires 'Test::More';

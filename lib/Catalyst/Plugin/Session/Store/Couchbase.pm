@@ -25,21 +25,19 @@ Catalyst::Plugin::Session::Store::Couchbase
   MyApp->config(
     'Plugin::Session' => {
       expires => 7200,
+      couchbase_server =>  'couchbase01.domain',
+      couchbase_password => 'password',
+      couchbase_bucket => 'default',
+      couchbase_ssl => 1,
+      couchbase_certpath => '/example/certpath/cert.pem',
     },
-    Couchbase => {
-      server => 'couchbase01.domain',
-      password => 'password',
-      bucket => 'default',
-      ssl => 1,
-      certpath => '/example/certpath/cert.pem',
-    }
   );
 
 =head1 CONFIG OPTIONS
 
 =over 4
 
-=item server
+=item couchbase_server
 
 The Couchbase server to connect to. If there are multiple nodes in a cluster,
 multiple servers can be provided as a comma-delimited list (ex: host1,host2),
@@ -47,27 +45,27 @@ which can improve reliability if the primary connection node is down. If the
 cluster is responding on a different port, it may be provided as host:port,
 where port is the memcached listening port.
 
-=item password
+=item couchbase_password
 
 Password for the given bucket. This can be omitted if a password is not set on
 the given bucket.
 
-=item bucket
+=item couchbase_bucket
 
 Bucket name to connect to. Defaults to "default" if it is not provided.
 
-=item ssl
+=item couchbase_ssl
 
 Set to 1 if the cluster is SSL-enabled and a SSL connection is desired. SSL
 support requires Couchbase Server 2.5 or higher and a copy of the server's
 SSL certificate. Defaults to off.
 
-=item certpath
+=item couchbase_certpath
 
 Path to the server's SSL pem-encoded certificate for validation. Not required if
 SSL is disabled.
 
-=item timeout
+=item couchbase_timeout
 
 Timeout (in seconds) to allow for bootstrapping a client. Defaults to 6.
 
@@ -79,7 +77,19 @@ sub setup_session {
 
     $c->log->debug("Setting up Couchbase session store") if $c->debug;
 
-    my $cfg = $c->config->{'Couchbase'};
+    my $session_cfg = $c->config->{'Plugin::Session'};
+
+    # Lift up old configuration format
+    if ( $c->config->{Couchbase} and not $session_cfg->{couchbase_server} ) {
+        foreach my $k ( keys %{$c->config->{Couchbase}} ) {
+            $session_cfg->{ 'couchbase_' . $k } = $c->config->{Couchbase}->{$k};
+        }
+    }
+
+    # Shorten names
+    my $cfg = {
+        map { my $k = $_; $k =~ s/^couchbase_//; $k => $session_cfg->{$_} } keys %{ $session_cfg }
+    };
 
     my $appname = "$c";
     $c->_session_couchbase_prefix($appname . "sess:");
@@ -127,12 +137,16 @@ sub store_session_data {
     }
     my $doc = Couchbase::Document->new($key);
     $c->_session_cb_bucket_handle->get($doc);
-    unless ($doc->is_ok) {
+    if ($doc->is_ok) {
+        $doc->value->{$type} = $data;
+        $doc->expiry($expiry);
+        $c->_session_cb_bucket_handle->replace($doc);
+    } else {
         $doc = Couchbase::Document->new( $key, {} );
+        $doc->value->{$type} = $data;
+        $doc->expiry($expiry);
+        $c->_session_cb_bucket_handle->insert($doc);
     }
-    $doc->value->{$type} = $data;
-    $doc->expiry($expiry);
-    $c->_session_cb_bucket_handle->upsert($doc);
     unless ($doc->is_ok) {
         Catalyst::Exception->throw(
             "Couldn't save $key / $data in couchbase storage: " . $doc->errstr
@@ -167,6 +181,9 @@ sub _build_couchbase_url {
     );
 
     # Connection URL is couchbases?://host1,host2/bucket?options
+    Catalyst::Exception->throw(
+        'Missing Couchbase server'
+    ) unless $cfg->{server};
     my $connection_url = join('/',
         ':/',
         $cfg->{server},
@@ -194,15 +211,21 @@ sub _build_couchbase_url {
     return $connection_url;
 }
 
-=head1 AUTHOR
+=head1 AUTHORS
 
-Toby Corkindale, C<< <tjc at wintrmute.net> >>
+=over 4
+
+=item Toby Corkindale, C<< <tjc at wintrmute.net> >>
+
+=item Nick Melnick C<< <nick at abstractwankery.com> >>
+
+=back
 
 =head1 BUGS
 
 Please report any bugs to the Github repo for this module:
 
-https://github.com/TJC/Catalyst-Plugin-Session-Store-Couchbase
+https://github.com/nmelnick/Catalyst-Plugin-Session-Store-Couchbase
 
 =head1 SUPPORT
 
@@ -238,7 +261,7 @@ an open-source version.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2013 Toby Corkindale.
+Copyright 2013-14 Toby Corkindale, Nick Melnick.
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of either: the GNU General Public License as published
@@ -246,9 +269,9 @@ by the Free Software Foundation; or the Artistic License.
 
 See http://dev.perl.org/licenses/ for more information.
 
-
 =cut
 
 
 __PACKAGE__->meta->make_immutable;
+
 1;
