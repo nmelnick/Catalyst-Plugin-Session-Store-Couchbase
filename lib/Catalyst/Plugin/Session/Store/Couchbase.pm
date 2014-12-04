@@ -10,7 +10,7 @@ use namespace::clean -except => 'meta'; # The last bit cargo culted.
 use Storable qw(nfreeze thaw);
 use URI::Escape qw(uri_escape);
 
-our $VERSION = '0.94';
+our $VERSION = '0.95';
 
 __PACKAGE__->mk_classdata('_session_cb_bucket_handle');
 __PACKAGE__->mk_classdata('_session_couchbase_prefix');

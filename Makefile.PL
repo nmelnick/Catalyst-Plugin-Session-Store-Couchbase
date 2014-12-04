@@ -8,6 +8,7 @@ license  'perl';
 build_requires 'Test::More';
 requires 'Catalyst::Plugin::Session' => 0.27;
 requires 'Couchbase';
+requires 'Couchbase::Core' => '2.0.2';
 requires 'Moose';
 requires 'Catalyst::ClassData';
 requires 'URI::Escape';
